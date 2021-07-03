@@ -40,7 +40,7 @@ print(np.median(img))
 
 
 def CreateGaussianKernel(sigma, normalizeflag):
-    R = np.ceil(2*sigma*np.sqrt(np.log(10)))  # 核尺寸 #! 核尺寸的大小的影响
+    R = np.ceil(2*sigma*np.sqrt(np.log(10)))
     [X, Y] = np.meshgrid(np.arange(-R, R+1, 1), np.arange(-R, R+1, 1))
     h = (1/(2*np.pi*sigma*sigma))*np.exp(-(X*X + Y*Y)/(2*sigma*sigma))
     if normalizeflag == 1:
@@ -49,7 +49,7 @@ def CreateGaussianKernel(sigma, normalizeflag):
 
 
 def CreateDoGxDoGyKernel(sigma):
-    R = np.ceil(3.57160625*sigma)  # 核尺寸 #! 3.57160625来源是什么
+    R = np.ceil(3.57160625*sigma)
     [X, Y] = np.meshgrid(np.arange(-R, R+1, 1), np.arange(-R, R+1, 1))
     DoGx = -(X/(2*np.pi*sigma**4))*np.exp(-(X*X + Y*Y)/(2*sigma**2))
     DoGy = -(Y/(2*np.pi*sigma**4))*np.exp(-(X*X + Y*Y)/(2*sigma**2))
@@ -58,9 +58,9 @@ def CreateDoGxDoGyKernel(sigma):
 
 # %%
 # * Standard deviation of derivative-of-gaussian (DoG) kernels [pixel]
-sigma_DoG = 0.5  # !影响，意义是什么
+sigma_DoG = 0.5
 # * Standard deviation of Gaussian kernel [pixel]
-sigma_Gauss = 2  # ! 影响，意义是什么
+sigma_Gauss = 2
 GaussianKernel = CreateGaussianKernel(sigma_Gauss, 1)
 DoGxKernel, DoGyKernel = CreateDoGxDoGyKernel(sigma_DoG)
 # %%
