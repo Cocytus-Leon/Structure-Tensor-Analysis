@@ -6,7 +6,7 @@ from scipy.signal import correlate2d
 from skimage.filters import gaussian
 from skimage import transform
 # %%
-path = 'D:\课程资料\python\imageTask\st_fibre_analysis_hbp-master\input'
+path = '目标文件的路径名'
 filename_list = os.listdir(path)
 image_3D = plt.imread(path+'\\'+filename_list[0])
 for item in filename_list:
@@ -63,21 +63,7 @@ for z in range(image_3D.shape[2]):
     for a in range(z*resize_ratio, (z+1)*resize_ratio):
         sampled[:, :, a] = blurred_downsample
 image_3D = 255 - sampled
-'''
-resize_ratio = px_size_xy / px_size_z
-resized_dim = int(resize_ratio * image_3D.shape[0])
-downsampled = np.zeros(
-    (resized_dim, resized_dim, image_3D.shape[2]), dtype=np.float32)
-for z in range(image_3D.shape[2]):
-    # convolution with Gaussian kernel for smoothing
-    # blurred = gaussian(image=image_3D[:, :, z], sigma=sigma_blur, mode='reflect')
-    blurred = gaussian(image=image_3D[:, :, z], sigma=sigma_blur)
-    # resize and save to new variable
-    downsampled[:, :, z] = normalize(
-        img=transform.resize(image=blurred, output_shape=(
-            resized_dim, resized_dim), mode='reflect'))
-image_3D = downsampled
-'''
+
 # %%
 plt.imshow(image_3D[:, :, 1], cmap=plt.cm.gray)
 # %%
@@ -87,11 +73,11 @@ print(image_3D.min())
 print(image_3D.max())
 print(np.median(image_3D))
 # %%
-# * 创建核函数
+# 创建核函数
 
 
 def CreateGaussianKernel(sigma, normalizeflag):
-    R = np.ceil(2*sigma*np.sqrt(np.log(10)))  # 核尺寸 #! 核尺寸的大小的影响
+    R = np.ceil(2*sigma*np.sqrt(np.log(10)))
     if np.mod(R, 2) == 0:
         R = R+1
     L = np.arange(-R, R+1, 1)
@@ -104,7 +90,7 @@ def CreateGaussianKernel(sigma, normalizeflag):
 
 
 def CreateDoGxDoGyDoGzKernel(sigma):
-    R = np.ceil(3.57160625*sigma)  # 核尺寸 #! 3.57160625来源是什么
+    R = np.ceil(3.57160625*sigma)
     if np.mod(R, 2) == 0:
         R = R+1
     L = np.arange(-R, R+1, 1)
@@ -138,10 +124,10 @@ def correlate3d(img, kernel):
 
 
 # %%
-# * Standard deviation of derivative-of-gaussian (DoG) kernels [pixel]
-sigma_DoG = 0.5  # !影响，意义是什么
-# * Standard deviation of Gaussian kernel [pixel]
-sigma_Gauss = 2  # ! 影响，意义是什么
+# Standard deviation of derivative-of-gaussian (DoG) kernels [pixel]
+sigma_DoG = 0.5
+# Standard deviation of Gaussian kernel [pixel]
+sigma_Gauss = 2
 GaussianKernel = CreateGaussianKernel(sigma_Gauss, 1)
 DoGxKernel, DoGyKernel, DoGzKernel = CreateDoGxDoGyDoGzKernel(sigma_DoG)
 # %%
