@@ -30,11 +30,12 @@ def norm_img(img, flag=False, threshold=20):
 
 
 # %% 将原图像素值整改到0-255区间
-img = cv2.imread('test_img.jpg', 0)
-img = norm_img(img, True)
+img = cv2.imread('/Users/zanewiegand/代码/python/STA-Results/2022-1-28.tif', 0)
+# img = norm_img(img, False)
 img = 255 - img
 img = cv2.pyrDown(img)
 img = cv2.pyrDown(img)
+# img = cv2.pyrDown(img)
 # %%
 plt.imshow(img, cmap=plt.cm.gray)
 print(img.shape)
@@ -109,9 +110,9 @@ def CreateDoGxDoGyKernel(sigma):
 # "Optimal orientation detection of linear simmetry".
 # %%
 # * Standard deviation of derivative-of-gaussian (DoG) kernels [pixel]
-sigma_DoG = 0.5  # !大结构用大sigma
+sigma_DoG = 12  # !大结构用大sigma
 # * Standard deviation of Gaussian kernel [pixel]
-sigma_Gauss = 4
+sigma_Gauss = 12
 # !大结构用大sigma
 GaussianKernel = CreateGaussianKernel(sigma_Gauss, 1)
 DoGxKernel, DoGyKernel = CreateDoGxDoGyKernel(sigma_DoG)
@@ -232,3 +233,5 @@ image_OUT = (255 * image_RGB).astype(np.uint8)
 plt.imshow(image_OUT)
 # %%
 plt.imsave("../STA-Results/STA_out.jpg", image_OUT)
+
+# %%
