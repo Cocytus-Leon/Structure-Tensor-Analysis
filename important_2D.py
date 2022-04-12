@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import correlate2d
 import tifffile as tf
-# %% 将unit16图像像素值转到0-255区间段
+# %% transform unit16 image intensity to 0-255
 
 
 def norm_img(img, flag=False, threshold=20):
@@ -29,7 +29,7 @@ def norm_img(img, flag=False, threshold=20):
     return img.astype(np.uint8)
 
 
-# %% 将原图像素值整改到0-255区间
+# %% transform unit16 image intensity to 0-255
 img = cv2.imread('/Users/zanewiegand/代码/python/STA-Results/2022-1-28.tif', 0)
 # img = norm_img(img, False)
 img = 255 - img
@@ -44,11 +44,11 @@ print(img.min())
 print(img.max())
 print(np.median(img))
 # %%
-# * 创建核函数
+# * kernel function creation
 
 
 def CreateGaussianKernel(sigma, normalizeflag):
-    R = np.ceil(2 * sigma * np.sqrt(np.log(10)))  # 核尺寸
+    R = np.ceil(2 * sigma * np.sqrt(np.log(10)))  # kernel size
     [X, Y] = np.meshgrid(np.arange(-R, R + 1, 1), np.arange(-R, R + 1, 1))
     h = (1 / (2 * np.pi * sigma * sigma)) * np.exp(
         -(X * X + Y * Y) / (2 * sigma * sigma)
@@ -59,7 +59,7 @@ def CreateGaussianKernel(sigma, normalizeflag):
 
 
 def CreateDoGxDoGyKernel(sigma):
-    R = np.ceil(3.57160625 * sigma)  # 核尺寸
+    R = np.ceil(3.57160625 * sigma)  # kernel size
     [X, Y] = np.meshgrid(np.arange(-R, R + 1, 1), np.arange(-R, R + 1, 1))
     DoGx = -(X / (2 * np.pi * sigma ** 4)) * \
         np.exp(-(X * X + Y * Y) / (2 * sigma ** 2))
@@ -110,10 +110,10 @@ def CreateDoGxDoGyKernel(sigma):
 # "Optimal orientation detection of linear simmetry".
 # %%
 # * Standard deviation of derivative-of-gaussian (DoG) kernels [pixel]
-sigma_DoG = 12  # !大结构用大sigma
+sigma_DoG = 12  # !the largerer the structure, the bigger the sigma
 # * Standard deviation of Gaussian kernel [pixel]
 sigma_Gauss = 12
-# !大结构用大sigma
+# !the largerer the structure, the bigger the sigma
 GaussianKernel = CreateGaussianKernel(sigma_Gauss, 1)
 DoGxKernel, DoGyKernel = CreateDoGxDoGyKernel(sigma_DoG)
 # %%
