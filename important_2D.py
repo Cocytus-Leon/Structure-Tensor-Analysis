@@ -233,5 +233,3 @@ image_OUT = (255 * image_RGB).astype(np.uint8)
 plt.imshow(image_OUT)
 # %%
 plt.imsave("../STA-Results/STA_out.jpg", image_OUT)
-
-# %%
