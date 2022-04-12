@@ -6,7 +6,7 @@ from scipy.signal import correlate2d
 from skimage.filters import gaussian
 from skimage import transform
 # %%
-path = '目标文件的路径名'
+path = './path name'
 filename_list = os.listdir(path)
 image_3D = plt.imread(path+'\\'+filename_list[0])
 for item in filename_list:
