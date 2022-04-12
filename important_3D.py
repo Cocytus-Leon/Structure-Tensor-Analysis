@@ -5,29 +5,66 @@ import os
 from scipy.signal import correlate2d
 from skimage.filters import gaussian
 from skimage import transform
+import tifffile as tf
+from tqdm import tqdm
 # %%
-path = './img path/name .tif'
-filename_list = os.listdir(path)
-image_3D = plt.imread(path+'\\'+filename_list[0])
-for item in filename_list:
-    item = path + '\\' + item
-    img = plt.imread(item)
-    image_3D = np.dstack((image_3D, img))
-image_3D = np.delete(image_3D, 0, axis=2)
+# path = './img path/name .tif'
+# filename_list = os.listdir(path)
+# image_3D = plt.imread(path+'\\'+filename_list[0])
+# for item in filename_list:
+#     item = path + '\\' + item
+#     img = plt.imread(item)
+#     image_3D = np.dstack((image_3D, img))
+# image_3D = np.delete(image_3D, 0, axis=2)
+
+
+def change_z_dim(img, z_dim):
+    if img.ndim == 3:
+        if z_dim == 2:
+            return img
+        elif z_dim == 1:
+            new_img = np.zeros([img.shape[0], img.shape[2],
+                               img.shape[1]]).astype(np.uint8)
+            for i in range(img.shape[z_dim]):
+                new_img[:, :, i] = img[:, i, :]
+            return new_img
+        elif z_dim == 0:
+            new_img = np.zeros([img.shape[1], img.shape[2],
+                               img.shape[0]]).astype(np.uint8)
+            for i in range(img.shape[z_dim]):
+                new_img[:, :, i] = img[i, :, :]
+            return new_img
+        else:
+            raise ValueError("Input correct z_dim: 0, 1 or 2")
+    elif img.ndim == 4:
+        if z_dim == 2:
+            return img
+        elif z_dim == 1:
+            new_img = np.zeros([img.shape[0], img.shape[2],
+                               img.shape[1], img.shape[3]]).astype(np.uint8)
+            for i in range(img.shape[z_dim]):
+                new_img[:, :, i, :] = img[:, i, :, :]
+            return new_img
+        elif z_dim == 0:
+            new_img = np.zeros([img.shape[1], img.shape[2],
+                               img.shape[0], img.shape[3]]).astype(np.uint8)
+            for i in range(img.shape[z_dim]):
+                new_img[:, :, i, :] = img[i, :, :, :]
+            return new_img
+        else:
+            raise ValueError(
+                "Input image shape: (Z,H,W,C), Input correct z_dim: 0, 1 or 2")
+
+
 # %%
+image_3D = tf.imread('ground-truth.tif').astype(np.uint8)
+image_3D = change_z_dim(image_3D, 0)
 print(image_3D.shape)
 print(image_3D.dtype)
 # %%
-plt.imshow(image_3D[:, :, 0], cmap=plt.cm.gray)
+i = np.random.randint(0, image_3D.shape[2])
+plt.imshow(image_3D[:, :, i], cmap=plt.cm.gray)
 # %%
-
-
-def normalize(img):
-    max_v = img.max()
-    min_v = img.min()
-    img = (img - min_v) / (max_v - min_v)
-    img = (img*255).astype(np.uint8)
-    return img
 
 
 def sigma_for_uniform_resolution(FWHM_xy, FWHM_z, px_size_xy):
@@ -44,13 +81,14 @@ def sigma_for_uniform_resolution(FWHM_xy, FWHM_z, px_size_xy):
 
 
 # %% 预处理
-px_size_xy = 0.32
-px_size_z = 3
-FWHM_xy = 0.7
-FWHM_z = 5
+px_size_xy = 1
+px_size_z = 1
+FWHM_xy = 1
+FWHM_z = 1
 sigma_blur = sigma_for_uniform_resolution(FWHM_xy, FWHM_z, px_size_xy)
-downsample_ratio = 0.5
-resize_ratio = int(px_size_z / px_size_xy*downsample_ratio)
+downsample_ratio = 1
+resize_ratio = int(np.ceil((px_size_z / px_size_xy*downsample_ratio)))
+# %%
 sample_X = int(image_3D.shape[0]*downsample_ratio)
 sample_Y = int(image_3D.shape[1]*downsample_ratio)
 sample_Z = int(image_3D.shape[2]*resize_ratio)
@@ -58,14 +96,15 @@ sampled = np.zeros((sample_X, sample_Y, sample_Z), dtype=np.uint8)
 for z in range(image_3D.shape[2]):
     blurred = gaussian(image=image_3D[:, :, z],
                        sigma=sigma_blur, mode='reflect')
-    blurred_downsample = normalize(transform.resize(
-        blurred, output_shape=(sample_X, sample_Y)))
+    blurred_downsample = transform.resize(
+        blurred, output_shape=(sample_X, sample_Y))
     for a in range(z*resize_ratio, (z+1)*resize_ratio):
         sampled[:, :, a] = blurred_downsample
 image_3D = 255 - sampled
 
 # %%
-plt.imshow(image_3D[:, :, 1], cmap=plt.cm.gray)
+i = np.random.randint(0, image_3D.shape[2])
+plt.imshow(image_3D[:, :, i], cmap=plt.cm.gray)
 # %%
 print(image_3D.shape)
 print(image_3D.dtype)
@@ -112,22 +151,20 @@ def correlate3d(img, kernel):
     img_pad = np.zeros([img_x, img_y, img_z+pad_L*2])
     img_pad[:, :, pad_L:pad_L+img_z] = img
     count = 0
-    for i in range(img_z):
-        for j in range(f_z):
-            out[:, :, i] = out[:, :, i] + \
-                correlate2d(img_pad[:, :, i+j], kernel[:, :, j], 'same')
-        count = count+1
-        progress = round((count/img_z*100), 2)
-        if np.mod(count, 10) == 0:
-            print('->'+str(progress)+"%")
+    with tqdm(total=img_z) as t:
+        for i in range(img_z):
+            for j in range(f_z):
+                out[:, :, i] = out[:, :, i] + \
+                    correlate2d(img_pad[:, :, i+j], kernel[:, :, j], 'same')
+            t.update(1)
     return out
 
 
 # %%
 # Standard deviation of derivative-of-gaussian (DoG) kernels [pixel]
-sigma_DoG = 0.5
+sigma_DoG = 4
 # Standard deviation of Gaussian kernel [pixel]
-sigma_Gauss = 2
+sigma_Gauss = 4
 GaussianKernel = CreateGaussianKernel(sigma_Gauss, 1)
 DoGxKernel, DoGyKernel, DoGzKernel = CreateDoGxDoGyDoGzKernel(sigma_DoG)
 # %%
@@ -167,23 +204,18 @@ dummyEigenvalues11 = np.zeros([A, B, C])
 dummyEigenvalues22 = np.zeros([A, B, C])
 dummyEigenvalues33 = np.zeros([A, B, C])
 
-total = np.prod([A, B, C])
-count = 0
-for a in range(A):
-    for b in range(B):
-        for c in range(C):
-            J_a_b_c = np.array([[Jxx[a, b, c], Jxy[a, b, c], Jxz[a, b, c]],
-                                [Jxy[a, b, c], Jyy[a, b, c], Jyz[a, b, c]],
-                                [Jxz[a, b, c], Jyz[a, b, c], Jzz[a, b, c]]])
-            Vals, featurevector = np.linalg.eig(J_a_b_c)
-            dummyEigenvalues11[a, b, c] = Vals[0]
-            dummyEigenvalues22[a, b, c] = Vals[1]
-            dummyEigenvalues33[a, b, c] = Vals[2]
-            count = count+1
-            progress = count/total*100
-            if np.mod(progress, 2) == 0:
-                print('->'+str(progress)+"%")
-
+with tqdm(total=np.prod([A, B, C])) as t:
+    for a in range(A):
+        for b in range(B):
+            for c in range(C):
+                J_a_b_c = np.array([[Jxx[a, b, c], Jxy[a, b, c], Jxz[a, b, c]],
+                                    [Jxy[a, b, c], Jyy[a, b, c], Jyz[a, b, c]],
+                                    [Jxz[a, b, c], Jyz[a, b, c], Jzz[a, b, c]]])
+                Vals, featurevector = np.linalg.eig(J_a_b_c)
+                dummyEigenvalues11[a, b, c] = np.real(Vals[0])
+                dummyEigenvalues22[a, b, c] = np.real(Vals[1])
+                dummyEigenvalues33[a, b, c] = np.real(Vals[2])
+                t.update(1)
 # %%
 # Apply Bigun and Grandlund formula (ref [2]) providing anles in [-pi;pi]
 bufferPhi_xy = 0.5*np.angle((Jyy - Jxx) + 1j*2*Jxy)
@@ -205,12 +237,12 @@ print(Tensor_Orientation.shape)
 print(Tensor_Orientation.dtype)
 # %%
 # Save the anisotropy map
-Tensor_AI_1122 = abs(dummyEigenvalues11 - dummyEigenvalues22) / \
-    abs(dummyEigenvalues11 + dummyEigenvalues22)
-Tensor_AI_1133 = abs(dummyEigenvalues11 - dummyEigenvalues33) / \
-    abs(dummyEigenvalues11 + dummyEigenvalues33)
-Tensor_AI_2233 = abs(dummyEigenvalues22 - dummyEigenvalues33) / \
-    abs(dummyEigenvalues22 + dummyEigenvalues33)
+Tensor_AI_1122 = abs(dummyEigenvalues11 - dummyEigenvalues22 + 1e-8) / \
+    abs(dummyEigenvalues11 + dummyEigenvalues22 + 1e-8)
+Tensor_AI_1133 = abs(dummyEigenvalues11 - dummyEigenvalues33 + 1e-8) / \
+    abs(dummyEigenvalues11 + dummyEigenvalues33 + 1e-8)
+Tensor_AI_2233 = abs(dummyEigenvalues22 - dummyEigenvalues33 + 1e-8) / \
+    abs(dummyEigenvalues22 + dummyEigenvalues33 + 1e-8)
 # %%
 Tensor_AI = (Tensor_AI_1122+Tensor_AI_1133+Tensor_AI_2233)/3
 # %%
@@ -221,11 +253,11 @@ S = Tensor_AI
 V = 1 - image_3D/255
 # %%
 image_HSV = np.zeros(
-    [image_3D.shape[0], image_3D.shape[1], 3, image_3D.shape[2]])
-for item in range(image_HSV.shape[3]):
-    image_HSV[:, :, 0, item] = H[:, :, item]
-    image_HSV[:, :, 1, item] = S[:, :, item]
-    image_HSV[:, :, 2, item] = V[:, :, item]
+    [image_3D.shape[2], image_3D.shape[0], image_3D.shape[1], 3])
+for item in range(image_HSV.shape[0]):
+    image_HSV[item, :, :, 0] = H[:, :, item]
+    image_HSV[item, :, :, 1] = S[:, :, item]
+    image_HSV[item, :, :, 2] = V[:, :, item]
 # %%
 
 
@@ -276,12 +308,20 @@ def HSV2RGB(hsv):
 
 # %%
 image_RGB = np.zeros(image_HSV.shape)
-for i in range(image_HSV.shape[3]):
-    image_RGB[:, :, :, i] = HSV2RGB(image_HSV[:, :, :, i])
+for i in range(image_HSV.shape[0]):
+    image_RGB[i, :, :, :] = HSV2RGB(image_HSV[i, :, :, :])
 # %%
 image_OUT = (255*image_RGB).astype(np.uint8)
 # %%
-plt.imshow(image_OUT[:, :, :, 3])
+i = np.random.randint(0, image_OUT.shape[0])
+plt.imshow(image_OUT[i, :, :, :])
 # %%
-for i in range(image_OUT.shape[3]):
-    plt.imsave('./output/{}.jpg'.format(i+1), image_OUT[:, :, :, i])
+tf.imwrite('../STA-Results/3D_output_2.tif', image_OUT)
+image_OUT_0 = change_z_dim(image_OUT, 0)
+tf.imwrite('../STA-Results/3D_output_0.tif', image_OUT_0)
+image_OUT_1 = change_z_dim(image_OUT, 1)
+tf.imwrite('../STA-Results/3D_output_1.tif', image_OUT_1)
+# for i in range(image_OUT.shape[3]):
+#    tf.imwrite('../STA-Results/3D_output/{}.tif'.format(i+1),
+#               image_OUT[:, :, :, i])
+# %%
