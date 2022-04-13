@@ -21,16 +21,17 @@ from tqdm import tqdm
 def change_z_dim(img, z_dim):
     if img.ndim == 3:
         if z_dim == 2:
-            return img
+            new_img = np.zeros([img.shape[0], img.shape[1], img.shape[2]])
+            for i in range(img.shape[z_dim]):
+                new_img[:, :, i] = img[:, :, i]
+            return new_img
         elif z_dim == 1:
-            new_img = np.zeros([img.shape[0], img.shape[2],
-                               img.shape[1]]).astype(np.uint8)
+            new_img = np.zeros([img.shape[0], img.shape[2], img.shape[1]])
             for i in range(img.shape[z_dim]):
                 new_img[:, :, i] = img[:, i, :]
             return new_img
         elif z_dim == 0:
-            new_img = np.zeros([img.shape[1], img.shape[2],
-                               img.shape[0]]).astype(np.uint8)
+            new_img = np.zeros([img.shape[1], img.shape[2], img.shape[0]])
             for i in range(img.shape[z_dim]):
                 new_img[:, :, i] = img[i, :, :]
             return new_img
@@ -87,7 +88,7 @@ FWHM_xy = 1
 FWHM_z = 1
 sigma_blur = sigma_for_uniform_resolution(FWHM_xy, FWHM_z, px_size_xy)
 downsample_ratio = 1
-resize_ratio = int(np.ceil((px_size_z / px_size_xy*downsample_ratio)))
+resize_ratio = int(np.ceil(px_size_z / px_size_xy*downsample_ratio))
 # %%
 sample_X = int(image_3D.shape[0]*downsample_ratio)
 sample_Y = int(image_3D.shape[1]*downsample_ratio)
@@ -162,9 +163,9 @@ def correlate3d(img, kernel):
 
 # %%
 # Standard deviation of derivative-of-gaussian (DoG) kernels [pixel]
-sigma_DoG = 4
+sigma_DoG = 2
 # Standard deviation of Gaussian kernel [pixel]
-sigma_Gauss = 4
+sigma_Gauss = 2
 GaussianKernel = CreateGaussianKernel(sigma_Gauss, 1)
 DoGxKernel, DoGyKernel, DoGzKernel = CreateDoGxDoGyDoGzKernel(sigma_DoG)
 # %%
