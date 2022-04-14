@@ -2,42 +2,32 @@
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import correlate2d
+from scipy.signal import convolve2d
 import tifffile as tf
+from tqdm import tqdm
 # %% transform unit16 image intensity to 0-255
 
 
-def norm_img(img, flag=False, threshold=20):
+def preprocess_img(img, downsample_times=0, reverse=True):
     if len(img.shape) == 3:
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        max_v = img.max()
-        min_v = img.min()
-        img = (img - min_v) / (max_v - min_v)
-        img = (img * 255).astype(np.uint8)
-        # img = img.astype(np.int16)
-        # img[img < 0] = 0
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY).astype(np.uint8)
     else:
-        max_v = img.max()
-        min_v = img.min()
-        img = (img - min_v) / (max_v - min_v)
-        img = (img * 255).astype(np.uint8)
-    if flag:
-        # img_mask = cv2.threshold(img, threshold, 255, cv2.THRESH_TOZERO)[1]
-        img_mask = cv2.threshold(img, threshold, 255, cv2.THRESH_OTSU)[1]
-        img = cv2.add(img, np.zeros(
-            np.shape(img), dtype=np.uint8), mask=img_mask)
-    return img.astype(np.uint8)
+        img = img.astype(np.uint8)
+    if downsample_times != 0:
+        for i in range(downsample_times):
+            img = cv2.pyrDown(img)
+    if reverse == True:
+        img = 255 - img
+    return img
 
 
 # %% transform unit16 image intensity to 0-255
-img = cv2.imread('/Users/zanewiegand/代码/python/STA-Results/2022-1-28.tif', 0)
+img = tf.imread('./input.tif')
+img = preprocess_img(img, 0, True)
 # img = norm_img(img, False)
-img = 255 - img
-img = cv2.pyrDown(img)
-img = cv2.pyrDown(img)
-# img = cv2.pyrDown(img)
+
 # %%
-plt.imshow(img, cmap=plt.cm.gray)
+plt.imshow(img, cmap='gray')
 print(img.shape)
 print(img.dtype)
 print(img.min())
@@ -110,9 +100,9 @@ def CreateDoGxDoGyKernel(sigma):
 # "Optimal orientation detection of linear simmetry".
 # %%
 # * Standard deviation of derivative-of-gaussian (DoG) kernels [pixel]
-sigma_DoG = 12  # !the largerer the structure, the bigger the sigma
+sigma_DoG = 4  # !the largerer the structure, the bigger the sigma
 # * Standard deviation of Gaussian kernel [pixel]
-sigma_Gauss = 12
+sigma_Gauss = 4
 # !the largerer the structure, the bigger the sigma
 GaussianKernel = CreateGaussianKernel(sigma_Gauss, 1)
 DoGxKernel, DoGyKernel = CreateDoGxDoGyKernel(sigma_DoG)
@@ -121,18 +111,18 @@ DoGxKernel, DoGyKernel = CreateDoGxDoGyKernel(sigma_DoG)
 Tensor_Orientation = np.zeros([R, C])
 Tensor_AI = np.zeros([R, C])
 # %%
-dImage_dx = correlate2d(img, DoGxKernel, "same")
-dImage_dy = correlate2d(img, DoGyKernel, "same")
+dImage_dx = convolve2d(img, DoGxKernel, "same")
+dImage_dy = convolve2d(img, DoGyKernel, "same")
 # %%
 Ixx = dImage_dx * dImage_dx
 Ixy = dImage_dx * dImage_dy
 Iyy = dImage_dy * dImage_dy
 # %%
-Jxx = correlate2d(Ixx, GaussianKernel, "same")
+Jxx = convolve2d(Ixx, GaussianKernel, "same")
 print("Jxx finished!")
-Jxy = correlate2d(Ixy, GaussianKernel, "same")
+Jxy = convolve2d(Ixy, GaussianKernel, "same")
 print("Jxy finished!")
-Jyy = correlate2d(Iyy, GaussianKernel, "same")
+Jyy = convolve2d(Iyy, GaussianKernel, "same")
 print("Jyy finished!")
 # %%
 dummyEigenvalues11 = np.zeros([R, C])
@@ -140,16 +130,15 @@ dummyEigenvalues22 = np.zeros([R, C])
 # %%
 TOT = R * C
 count = 0
-for rr in range(R):
-    for cc in range(C):
-        J_rr_cc = np.array([[Jxx[rr, cc], Jxy[rr, cc]],
-                           [Jxy[rr, cc], Jyy[rr, cc]]])
-        Vals, featurevector = np.linalg.eig(J_rr_cc)
-        dummyEigenvalues11[rr, cc] = Vals[0]
-        dummyEigenvalues22[rr, cc] = Vals[1]
-        count = count + 1
-        if np.mod(count, 100000) == 0:
-            print("---------->{:.2f}%".format(count / TOT * 100))
+with tqdm(total=np.prod([R, C])) as t:
+    for rr in range(R):
+        for cc in range(C):
+            J_rr_cc = np.array([[Jxx[rr, cc], Jxy[rr, cc]],
+                               [Jxy[rr, cc], Jyy[rr, cc]]])
+            Vals, featurevector = np.linalg.eig(J_rr_cc)
+            dummyEigenvalues11[rr, cc] = Vals[0]
+            dummyEigenvalues22[rr, cc] = Vals[1]
+            t.update(1)
 # %%
 # Apply Bigun and Grandlund formula (ref [2]) providing anles in [-pi;pi]
 bufferPhi = 0.5 * np.angle((Jyy - Jxx) + 1j * 2 * Jxy)
@@ -232,4 +221,4 @@ image_OUT = (255 * image_RGB).astype(np.uint8)
 # %%
 plt.imshow(image_OUT)
 # %%
-plt.imsave("../STA-Results/STA_out.jpg", image_OUT)
+plt.imsave("./STA_out.jpg", image_OUT)

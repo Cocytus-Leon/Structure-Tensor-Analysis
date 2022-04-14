@@ -1,8 +1,7 @@
 # %%
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-from scipy.signal import correlate2d
+from scipy.signal import convolve2d
 from skimage.filters import gaussian
 from skimage import transform
 import tifffile as tf
@@ -144,7 +143,7 @@ def CreateDoGxDoGyDoGzKernel(sigma):
     return DoGx, DoGy, DoGz
 
 
-def correlate3d(img, kernel):
+def convolve3d(img, kernel):
     [img_x, img_y, img_z] = np.shape(img)
     [NULL, NULL, f_z] = np.shape(kernel)
     out = np.zeros([img_x, img_y, img_z])
@@ -156,7 +155,7 @@ def correlate3d(img, kernel):
         for i in range(img_z):
             for j in range(f_z):
                 out[:, :, i] = out[:, :, i] + \
-                    correlate2d(img_pad[:, :, i+j], kernel[:, :, j], 'same')
+                    convolve2d(img_pad[:, :, i+j], kernel[:, :, j], 'same')
             t.update(1)
     return out
 
@@ -173,11 +172,11 @@ DoGxKernel, DoGyKernel, DoGzKernel = CreateDoGxDoGyDoGzKernel(sigma_DoG)
 Tensor_Orientation = np.zeros([A, B, C])
 Tensor_AI = np.zeros([A, B, C])
 # %%
-dImage_dx = correlate3d(image_3D, DoGxKernel)
+dImage_dx = convolve3d(image_3D, DoGxKernel)
 print('dImage_dx finished!')
-dImage_dy = correlate3d(image_3D, DoGyKernel)
+dImage_dy = convolve3d(image_3D, DoGyKernel)
 print('dImage_dy finished!')
-dImage_dz = correlate3d(image_3D, DoGzKernel)
+dImage_dz = convolve3d(image_3D, DoGzKernel)
 print('dImage_dz finished!')
 # %%
 Ixx = dImage_dx*dImage_dx
@@ -187,17 +186,17 @@ Iyy = dImage_dy*dImage_dy
 Iyz = dImage_dy*dImage_dz
 Izz = dImage_dz*dImage_dz
 # %%
-Jxx = correlate3d(Ixx, GaussianKernel)
+Jxx = convolve3d(Ixx, GaussianKernel)
 print('Jxx finished!')
-Jxy = correlate3d(Ixy, GaussianKernel)
+Jxy = convolve3d(Ixy, GaussianKernel)
 print('Jxy finished!')
-Jxz = correlate3d(Ixz, GaussianKernel)
+Jxz = convolve3d(Ixz, GaussianKernel)
 print('Jxz finished!')
-Jyy = correlate3d(Iyy, GaussianKernel)
+Jyy = convolve3d(Iyy, GaussianKernel)
 print('Jyy finished!')
-Jyz = correlate3d(Iyz, GaussianKernel)
+Jyz = convolve3d(Iyz, GaussianKernel)
 print('Jyz finished!')
-Jzz = correlate3d(Izz, GaussianKernel)
+Jzz = convolve3d(Izz, GaussianKernel)
 print('Jzz finished!')
 # %%
 
