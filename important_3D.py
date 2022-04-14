@@ -163,9 +163,9 @@ def correlate3d(img, kernel):
 
 # %%
 # Standard deviation of derivative-of-gaussian (DoG) kernels [pixel]
-sigma_DoG = 2
+sigma_DoG = 4
 # Standard deviation of Gaussian kernel [pixel]
-sigma_Gauss = 2
+sigma_Gauss = 4
 GaussianKernel = CreateGaussianKernel(sigma_Gauss, 1)
 DoGxKernel, DoGyKernel, DoGzKernel = CreateDoGxDoGyDoGzKernel(sigma_DoG)
 # %%
