@@ -38,19 +38,19 @@ def change_z_dim(img, z_dim):
         else:
             raise ValueError("Input correct z_dim: 0, 1 or 2")
     elif img.ndim == 4:
-        if z_dim == 2:
+        if z_dim == 0:
             return img
         elif z_dim == 1:
-            new_img = np.zeros([img.shape[0], img.shape[2],
+            new_img = np.zeros([img.shape[1], img.shape[0],
+                                img.shape[2], img.shape[3]]).astype(np.uint8)
+            for i in range(img.shape[z_dim]):
+                new_img[i, :, :, :] = img[:, i, :, :]
+            return new_img
+        elif z_dim == 2:
+            new_img = np.zeros([img.shape[2], img.shape[0],
                                img.shape[1], img.shape[3]]).astype(np.uint8)
             for i in range(img.shape[z_dim]):
-                new_img[:, :, i, :] = img[:, i, :, :]
-            return new_img
-        elif z_dim == 0:
-            new_img = np.zeros([img.shape[1], img.shape[2],
-                               img.shape[0], img.shape[3]]).astype(np.uint8)
-            for i in range(img.shape[z_dim]):
-                new_img[:, :, i, :] = img[i, :, :, :]
+                new_img[i, :, :, :] = img[:, :, i, :]
             return new_img
         else:
             raise ValueError(
@@ -317,11 +317,12 @@ image_OUT = (255*image_RGB).astype(np.uint8)
 i = np.random.randint(0, image_OUT.shape[0])
 plt.imshow(image_OUT[i, :, :, :])
 # %%
-tf.imwrite('../STA-Results/3D_output_2.tif', image_OUT)
 image_OUT_0 = change_z_dim(image_OUT, 0)
 tf.imwrite('../STA-Results/3D_output_0.tif', image_OUT_0)
 image_OUT_1 = change_z_dim(image_OUT, 1)
 tf.imwrite('../STA-Results/3D_output_1.tif', image_OUT_1)
+image_OUT_2 = change_z_dim(image_OUT, 2)
+tf.imwrite('../STA-Results/3D_output_2.tif', image_OUT_2)
 # for i in range(image_OUT.shape[3]):
 #    tf.imwrite('../STA-Results/3D_output/{}.tif'.format(i+1),
 #               image_OUT[:, :, :, i])
