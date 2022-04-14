@@ -22,7 +22,8 @@ def preprocess_img(img, downsample_times=0, reverse=True):
 
 
 # %% transform unit16 image intensity to 0-255
-img = tf.imread('./input.tif')
+img = cv2.imread('./test_img.jpg')
+# img = tf.imread('./input.tif')
 img = preprocess_img(img, 0, True)
 # img = norm_img(img, False)
 
