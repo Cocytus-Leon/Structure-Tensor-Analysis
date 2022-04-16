@@ -199,7 +199,6 @@ print('Jyz finished!')
 Jzz = convolve3d(Izz, GaussianKernel)
 print('Jzz finished!')
 # %%
-
 dummyEigenvalues11 = np.zeros([A, B, C])
 dummyEigenvalues22 = np.zeros([A, B, C])
 dummyEigenvalues33 = np.zeros([A, B, C])
