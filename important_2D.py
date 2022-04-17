@@ -107,6 +107,16 @@ sigma_Gauss = 4
 # !the largerer the structure, the bigger the sigma
 GaussianKernel = CreateGaussianKernel(sigma_Gauss, 1)
 DoGxKernel, DoGyKernel = CreateDoGxDoGyKernel(sigma_DoG)
+'''
+plt.figure()
+plt.subplot(1, 3, 1)
+plt.imshow(GaussianKernel)
+plt.subplot(1, 3, 2)
+plt.imshow(DoGxKernel)
+plt.subplot(1, 3, 3)
+plt.imshow(DoGyKernel)
+plt.tight_layout()
+'''
 # %%
 [R, C] = np.shape(img)
 Tensor_Orientation = np.zeros([R, C])
@@ -114,10 +124,28 @@ Tensor_AI = np.zeros([R, C])
 # %%
 dImage_dx = convolve2d(img, DoGxKernel, "same")
 dImage_dy = convolve2d(img, DoGyKernel, "same")
+"""
+plt.figure()
+plt.subplot(1, 2, 1)
+plt.imshow(dImage_dx, cmap='gray')
+plt.subplot(1, 2, 2)
+plt.imshow(dImage_dy, cmap='gray')
+plt.tight_layout()
+"""
 # %%
 Ixx = dImage_dx * dImage_dx
 Ixy = dImage_dx * dImage_dy
 Iyy = dImage_dy * dImage_dy
+"""
+plt.figure()
+plt.subplot(1, 3, 1)
+plt.imshow(Ixx, cmap='gray')
+plt.subplot(1, 3, 2)
+plt.imshow(Ixy, cmap='gray')
+plt.subplot(1, 3, 3)
+plt.imshow(Iyy, cmap='gray')
+plt.tight_layout()
+"""
 # %%
 Jxx = convolve2d(Ixx, GaussianKernel, "same")
 print("Jxx finished!")

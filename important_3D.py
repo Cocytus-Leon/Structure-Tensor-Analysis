@@ -7,14 +7,6 @@ from skimage import transform
 import tifffile as tf
 from tqdm import tqdm
 # %%
-# path = './img path/name .tif'
-# filename_list = os.listdir(path)
-# image_3D = plt.imread(path+'\\'+filename_list[0])
-# for item in filename_list:
-#     item = path + '\\' + item
-#     img = plt.imread(item)
-#     image_3D = np.dstack((image_3D, img))
-# image_3D = np.delete(image_3D, 0, axis=2)
 
 
 def change_z_dim(img, z_dim):
@@ -61,58 +53,54 @@ image_3D = tf.imread('ground-truth.tif').astype(np.uint8)
 image_3D = change_z_dim(image_3D, 0)
 print(image_3D.shape)
 print(image_3D.dtype)
-# %%
+print(image_3D.min())
+print(image_3D.max())
+print(np.median(image_3D))
+
 i = np.random.randint(0, image_3D.shape[2])
 plt.imshow(image_3D[:, :, i], cmap=plt.cm.gray)
 # %%
+# pre-process
 
 
-def sigma_for_uniform_resolution(FWHM_xy, FWHM_z, px_size_xy):
-
+def preprocess_img(img_stack, xy_resolution, z_resolution, downsample_ratio):
     # estimate variance (sigma**2) from FWHM values     [um**2]
-    sigma2_xy = FWHM_xy ** 2 / (8 * np.log(2))
-    sigma2_z = FWHM_z ** 2 / (8 * np.log(2))
+    sigma2_xy = xy_resolution ** 2 / (8 * np.log(2))
+    sigma2_z = z_resolution ** 2 / (8 * np.log(2))
     # estimate variance (sigma_s**2) of Gaussian kernel [um**2]
     sigma2_s = np.abs(sigma2_z - sigma2_xy)
     # estimate SD of Gaussian Kernel for spatial LP filtering [um]
-    sigma_s = np.sqrt(sigma2_s)
-    # return SD [pixel]
-    return sigma_s / px_size_xy
+    sigma_blur = np.sqrt(sigma2_s)
+
+    sample_X = int(img_stack.shape[0]*downsample_ratio)
+    sample_Y = int(img_stack.shape[1]*downsample_ratio)
+    sample_Z = int(img_stack.shape[2]*downsample_ratio)
+
+    sampled = np.zeros((sample_X, sample_Y, sample_Z), dtype=np.uint8)
+
+    for z in range(img_stack.shape[2]):
+        blurred = gaussian(image=img_stack[:, :, z],
+                           sigma=sigma_blur, mode='reflect')
+        blurred_downsample = transform.resize(
+            blurred, output_shape=(sample_X, sample_Y))
+        for a in range(int(z*downsample_ratio), int((z+1)*downsample_ratio)):
+            sampled[:, :, a] = blurred_downsample
+    img_stack = 255 - sampled
+    return img_stack
 
 
-# %% 预处理
-px_size_xy = 1
-px_size_z = 1
-FWHM_xy = 1
-FWHM_z = 1
-sigma_blur = sigma_for_uniform_resolution(FWHM_xy, FWHM_z, px_size_xy)
-downsample_ratio = 1
-resize_ratio = int(np.ceil(px_size_z / px_size_xy*downsample_ratio))
-# %%
-sample_X = int(image_3D.shape[0]*downsample_ratio)
-sample_Y = int(image_3D.shape[1]*downsample_ratio)
-sample_Z = int(image_3D.shape[2]*resize_ratio)
-sampled = np.zeros((sample_X, sample_Y, sample_Z), dtype=np.uint8)
-for z in range(image_3D.shape[2]):
-    blurred = gaussian(image=image_3D[:, :, z],
-                       sigma=sigma_blur, mode='reflect')
-    blurred_downsample = transform.resize(
-        blurred, output_shape=(sample_X, sample_Y))
-    for a in range(z*resize_ratio, (z+1)*resize_ratio):
-        sampled[:, :, a] = blurred_downsample
-image_3D = 255 - sampled
+image_3D = preprocess_img(image_3D, 1, 1, 1)
 
-# %%
-i = np.random.randint(0, image_3D.shape[2])
-plt.imshow(image_3D[:, :, i], cmap=plt.cm.gray)
-# %%
 print(image_3D.shape)
 print(image_3D.dtype)
 print(image_3D.min())
 print(image_3D.max())
 print(np.median(image_3D))
+
+i = np.random.randint(0, image_3D.shape[2])
+plt.imshow(image_3D[:, :, i], cmap=plt.cm.gray)
 # %%
-# 创建核函数
+# create kernel
 
 
 def CreateGaussianKernel(sigma, normalizeflag):
@@ -321,7 +309,3 @@ image_OUT_1 = change_z_dim(image_OUT, 1)
 tf.imwrite('../STA-Results/3D_output_1.tif', image_OUT_1)
 image_OUT_2 = change_z_dim(image_OUT, 2)
 tf.imwrite('../STA-Results/3D_output_2.tif', image_OUT_2)
-# for i in range(image_OUT.shape[3]):
-#    tf.imwrite('../STA-Results/3D_output/{}.tif'.format(i+1),
-#               image_OUT[:, :, :, i])
-# %%
